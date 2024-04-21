@@ -1,0 +1,7 @@
+# Feel free to loosen some of these version requirements if they cause problems for whatever reason, we just locked them in at their latest versions
+argparse
+gymnasium[mujoco]
+numpy
+stable-baselines3[extra]==2.0.0a10
+pynput
+tqdm

@@ -1,3 +1,15 @@
+MUJOCO_LOG.TXT
+test_models/
+
+# MacOS
+.DS_Store
+
+# VSCode
+.vscode
+
+# PyCharm
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
