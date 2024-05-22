@@ -8,7 +8,7 @@ from pynput import keyboard
 from stable_baselines3 import TD3, SAC
 from stable_baselines3.common.env_checker import check_env
 
-from inchworm import InchwormEnv
+from environments.inchworm import InchwormEnv
 
 
 def train_with_sb3_agent(
@@ -73,7 +73,6 @@ def run_simulation_with_sb3_agent(
     model_name="inchworm_td3",
     model_dir="saved_models",
     algorithm="td3",
-    old_model=False,
     evals=False,
 ):
     """
@@ -85,7 +84,6 @@ def run_simulation_with_sb3_agent(
     - `model_name`: name of the zip file (minus the .zip extension) contained in `model_dir` that represents a saved pretrained agent
     - `model_dir`: directory path where the model is stored (with no trailing slash)
     - `algorithm`: the algorithm to use for training. Must be one of "td3" or "sac"
-    - `old_model`: whether the model was trained with the old version of the Inchworm environment
     - `evals`: whether to calculate evaluation metrics while running the agent
     """
     saved_model_path = f"{model_dir}/{model_name}.zip"
@@ -93,7 +91,7 @@ def run_simulation_with_sb3_agent(
     algorithm_class = {"td3": TD3, "sac": SAC}.get(algorithm.lower())
     assert algorithm_class is not None, f"Invalid algorithm: {algorithm}"
 
-    env = InchwormEnv(render_mode="human", old_model=old_model, evals=evals)
+    env = InchwormEnv(render_mode="human", evals=evals)
     check_env(
         env
     )  # Make sure our env is compatible with the interface that stable-baselines3 agents expect
@@ -270,12 +268,6 @@ if __name__ == "__main__":
         action="store_true",
         help="whether to print out evaluation data while running the simulation",
     )
-    group3.add_argument(
-        "-o",
-        "--old-model",
-        action="store_true",
-        help="whether the model was trained with the old version of the Inchworm environment",
-    )
     group4 = parser.add_argument_group("Training arguments")
     group4.add_argument(
         "-T",
@@ -313,7 +305,6 @@ if __name__ == "__main__":
             model_name=args.model_name,
             algorithm=args.algorithm,
             model_dir="saved_models" if args.saved_dir else "test_models",
-            old_model=args.old_model,
             evals=args.eval,
         )
     elif args.random:

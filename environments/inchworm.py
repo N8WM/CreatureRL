@@ -116,7 +116,6 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
     | Parameter                  | Type      | Default          | Description                   |
     |----------------------------|-----------|------------------|-------------------------------|
     | `xml_file`                 | **str**   | `"inchworm.xml"` | Path to a MuJoCo model |
-    | `old_model`                | **bool**  | `False`          | If true, use the old version of the inchworm xml environment
     | `episode_length`           | **int**   | `1000`           | Number of timesteps per episode (before truncation) |
     | `evals`                    | **bool**  | `False`          | If true, calculate evaluation metrics on the episodes
     | `ctrl_cost_weight`         | **float** | `0.5`            | Weight for *ctrl_cost* term (see section on reward) |
@@ -142,13 +141,11 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
     right_foot = "right_foot"
 
     inchworm_xml_file = path.join(path.dirname(__file__), "inchworm.xml")
-    old_inchworm_xml_file = path.join(path.dirname(__file__), "inchworm_old.xml")
 
     def __init__(
         self,
         xml_file=inchworm_xml_file,
         episode_length=1000,
-        old_model=False,
         evals=False,
         ctrl_cost_weight=2,
         ungrounded_cost_weight=100,
@@ -158,15 +155,11 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
         msr_eta: float | None = None,
         **kwargs,
     ):
-        if old_model:
-            xml_file = self.old_inchworm_xml_file
-            self.root_body = self.left_foot
 
         utils.EzPickle.__init__(
             self,
             xml_file,
             episode_length,
-            old_model,
             evals,
             ctrl_cost_weight,
             ungrounded_cost_weight,
@@ -182,7 +175,6 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
 
         # Store parameters
         self._episode_length = episode_length
-        self._old_model = old_model
         self._evals = evals
         self._ctrl_cost_weight = ctrl_cost_weight
         self._ungrounded_cost_weight = ungrounded_cost_weight
@@ -254,9 +246,6 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
         """
         Whether the inchworm is currently touching the ground with at least one foot
         """
-        if self._old_model:
-            return self.data.ncon > 0
-
         left_gripper_id = self.data.geom(self.left_gripper_geom).id
         right_gripper_id = self.data.geom(self.right_gripper_geom).id
         grounded = False

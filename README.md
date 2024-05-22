@@ -65,10 +65,6 @@ Run an existing trained model (inchworm4.2_sac) and print evaluation data:
 
 `python3 run_environment.py -rsem inchworm4.2_sac -a sac`
 
-Run an existing trained model (inchworm2.1_td3) on the old Inchworm environment and print evaluation data:
-
-`python3 run_environment.py -rsoem inchworm2.1_td3`
-
 Train a new model (inchworm5.0_td3) with 10,000,000 timesteps:
 
 `python3 run_environment.py -tm inchworm5.0_td3 -T 10000000`
@@ -97,7 +93,6 @@ Training and running arguments:
 Running arguments:
   -s, --saved-dir       whether the model will be/is in the saved_models/ directory (otherwise test_models/)
   -e, --eval            whether to print out evaluation data while running the simulation
-  -o, --old-model       whether the model was trained with the old version of the Inchworm environment
 
 Training arguments:
   -T TOTAL_TIMESTEPS, --total-timesteps TOTAL_TIMESTEPS

@@ -1,6 +1,6 @@
 # Feel free to loosen some of these version requirements if they cause problems for whatever reason, we just locked them in at their latest versions
 argparse
-gymnasium[mujoco]
+gymnasium[mujoco]==0.28.1
 numpy
 stable-baselines3[extra]==2.0.0a10
 pynput
