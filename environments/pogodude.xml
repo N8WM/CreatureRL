@@ -12,11 +12,14 @@
     <default class="connector_joint">
       <joint type="hinge" armature="1" damping="1" limited="true" axis="0 1 0" />
     </default>
+
     <default class="pogo_joint">
       <joint type="slide" armature="1" damping="1" limited="true" axis="0 0 1" />
     </default>
+
     <geom conaffinity="0" condim="3" friction="1 1 1" rgba="0.8 0.4 0.8 1" density="5.0" margin="0.01" size="0.05" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="100" />
+
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="2" />
   </default>
 
   <!-- VISUAL ASSETS -->
@@ -30,54 +33,81 @@
   <!-- PHYSICAL ENVIRONMENT -->
 
   <worldbody>
+
     <light cutoff="100" diffuse="1 1 1" dir="0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular="0.1 0.1 0.1" />
     <geom type="plane" size="0 8 1" conaffinity="1" material="checker_mat" rgba="0.8 0.9 0.8 1" />
 
-  <!-- POGODUDE -->
+    <!-- POGODUDE -->
 
-    <body name="body" pos="0 0 1">
-      <geom type="capsule" fromto="0 0 0 0 0 1" />
+    <body name="body" pos="0 0 2.5">
 
       <!-- GLOBAL JOINTS -->
-      <joint name="hc_joint" type="hinge" axis="0 1 0" />
-      <joint name="hsx_joint" type="slide" axis="1 0 0" />
-      <joint name="hsz_joint" type="slide" axis="0 0 1" />
+      <joint type="hinge" axis="0 1 0" />
+      <joint type="slide" axis="1 0 0" />
+      <joint type="slide" axis="0 0 1" />
+
+      <geom type="capsule" fromto="0 0 0 0 0 1" />
 
       <body name="head" pos="0 0 1.2">
         <geom type="sphere" pos="0 0 0" size="0.2" />
+        <camera name="track" mode="trackcom" pos="0 -10 -0" xyaxes="1 0 0 0 0 1"/>
       </body>
 
       <body name="upper_leg" pos="0 0 0">
         <geom type="capsule" fromto="0 0 0 0.6 0 0" />
-        <joint name="upper_leg_joint" type="hinge" axis="0 1 0" />
+        <joint name="upper_leg_joint" type="hinge" axis="0 1 0" range="-75 90" />
 
         <body name="lower_leg" pos="0.6 0 0">
           <geom type="capsule" fromto="0 0 0 0 0 -0.6" />
-          <joint name="lower_leg_joint" type="hinge" axis="0 1 0" />
+          <joint name="lower_leg_joint" type="hinge" axis="0 1 0" range="-90 75" />
         </body>
       </body>
 
       <body name="upper_arm" pos="0 0 0.75">
         <geom type="capsule" fromto="0 0 0 0.3 0 -0.3" />
-        <joint name="upper_arm_joint" type="hinge" axis="0 1 0" />
+        <joint name="upper_arm_joint" type="hinge" axis="0 1 0" range="-90 10" />
 
         <body name="lower_arm" pos="0.3 0 -0.3">
           <geom type="capsule" fromto="0 0 0 0.3 0 0.3" />
-          <joint name="lower_arm_joint" type="hinge" axis="0 1 0" />
+          <joint name="lower_arm_joint" type="hinge" axis="0 1 0" range="-80 90" />
         </body>
-
       </body>
 
     </body>
 
     <!-- POGOSTICK -->
 
-    <body name="pogo_body" pos="0.6 0.1 0.4">
+    <body name="pogo_body" pos="0.6 0.1 1.9">
+
+      <!-- GLOBAL JOINTS -->
+      <joint type="hinge" axis="0 1 0" />
+      <joint type="slide" axis="1 0 0" />
+      <joint type="slide" axis="0 0 1" />
+
       <geom type="capsule" fromto="0 0 0 0 0 1.35" size="0.1" rgba="0.4 0.4 0.94 1" />
-      <body name="pogo_rod">
+
+      <body name="pogo_rod" pos="0 0 0">
+        <geom type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0.4 0.94 0.4 1" />
+        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="50" />
       </body>
     </body>
 
   </worldbody>
+
+  <!-- POGOSTICK GRIP -->
+
+  <equality>
+    <connect name="feet" body1="lower_leg" body2="pogo_body" anchor="0 0 -0.6" />
+    <connect name="hands" body1="lower_arm" body2="pogo_body" anchor="0.3 0 0.3" />
+  </equality>
+
+  <!-- ACTUATORS -->
+
+  <actuator>
+    <motor name="hip" joint="upper_leg_joint" />
+    <motor name="knee" joint="lower_leg_joint" />
+    <motor name="shoulder" joint="upper_arm_joint" />
+    <motor name="elbow" joint="lower_arm_joint" />
+  </actuator>
 
 </mujoco>
