@@ -46,29 +46,29 @@
       <joint type="slide" axis="1 0 0" />
       <joint type="slide" axis="0 0 1" />
 
-      <geom type="capsule" fromto="0 0 0 0 0 1" />
+      <geom type="capsule" fromto="0 0 0 0 0 1" rgba="1 0.2 0.2 1" />
 
       <body name="head" pos="0 0 1.2">
-        <geom type="sphere" pos="0 0 0" size="0.2" />
+        <geom type="sphere" pos="0 0 0" size="0.2" rgba="1 0.8 0.6 1" />
         <camera name="track" mode="trackcom" pos="0 -10 -0" xyaxes="1 0 0 0 0 1"/>
       </body>
 
       <body name="upper_leg" pos="0 0 0">
-        <geom type="capsule" fromto="0 0 0 0.6 0 0" />
+        <geom type="capsule" fromto="0 0 0 0.6 0 0" rgba="0 0.4 0.8 1" />
         <joint name="upper_leg_joint" type="hinge" axis="0 1 0" range="-75 90" />
 
         <body name="lower_leg" pos="0.6 0 0">
-          <geom type="capsule" fromto="0 0 0 0 0 -0.6" />
+          <geom type="capsule" fromto="0 0 0 0 0 -0.6" rgba="1 0.8 0.6 1" />
           <joint name="lower_leg_joint" type="hinge" axis="0 1 0" range="-90 75" />
         </body>
       </body>
 
       <body name="upper_arm" pos="0 0 0.75">
-        <geom type="capsule" fromto="0 0 0 0.3 0 -0.3" />
+        <geom type="capsule" fromto="0 0 0 0.3 0 -0.3" rgba="1 0.2 0.2 1" />
         <joint name="upper_arm_joint" type="hinge" axis="0 1 0" range="-90 10" />
 
         <body name="lower_arm" pos="0.3 0 -0.3">
-          <geom type="capsule" fromto="0 0 0 0.3 0 0.3" />
+          <geom type="capsule" fromto="0 0 0 0.3 0 0.3" rgba="1 0.8 0.6 1" />
           <joint name="lower_arm_joint" type="hinge" axis="0 1 0" range="-80 90" />
         </body>
       </body>
@@ -84,10 +84,10 @@
       <joint type="slide" axis="1 0 0" />
       <joint type="slide" axis="0 0 1" />
 
-      <geom type="capsule" fromto="0 0 0 0 0 1.35" size="0.1" rgba="0.4 0.4 0.94 1" />
+      <geom type="capsule" fromto="0 0 0 0 0 1.35" size="0.1" rgba="0 1 0.5 1" />
 
       <body name="pogo_rod" pos="0 0 0">
-        <geom type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0.4 0.94 0.4 1" />
+        <geom type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0 1 0.5 1" />
         <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="50" />
       </body>
     </body>
