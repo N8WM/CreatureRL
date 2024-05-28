@@ -48,6 +48,23 @@ class PogoEnv(MujocoEnv):
     12. angle of knee joint                 (deg)
     13. angular velocity of knee joint      (deg/s)
 
+    ## Utility Function
+
+    Since the goal of the environment is to jump as high as possible, the reward
+    function is designed to encourage the robot to jump higher. A few components
+    make up the reward function:
+
+    - *height_reward*: The reward for existing at a higher y-coordinate, which
+    is calculated as `height_reward_weight * y-coordinate`.
+    - *jump_reward*: The reward for jumping higher, which is calculated as
+    `jump_reward_weight * clamp(y-velocity, 0, inf)`.
+    - *control_cost*: A penalty for applying large forces to the motors, which
+    is calculated as `control_cost_weight * sum(action[:4]**2)`. (TODO)
+    - *alive_reward*: A constant reward for staying alive, which is calculated
+    as `alive_reward * is_alive`.
+
+    The total reward is calculated as `reward = height_reward + jump_reward + alive_reward - control_cost`.
+
     """
 
 
