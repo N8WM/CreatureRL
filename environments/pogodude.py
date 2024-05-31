@@ -1,20 +1,66 @@
+"""Pogodude Environment"""
+
 from os import path
+from dataclasses import dataclass
 
 import numpy as np
 
-from gymnasium import utils
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
 from gymnasium.spaces import Box
 
 
-DEFAULT_CAMERA_CONFIG = {
-    "distance": 8.0,
-}
+# Helper classes
 
+@dataclass
+class Vector3:
+    """3D float vector"""
+    x: float
+    y: float
+    z: float
+
+
+class BodyData:
+    """Helper class to get body data from Mujoco environment"""
+
+    mjenv: MujocoEnv
+    name: str
+    _geom = None
+
+    def __init__(self, mjenv: MujocoEnv,  name: str):
+        self.name = name
+        self.mjenv = mjenv
+
+    @property
+    def geom(self):
+        """Get cached geom data"""
+        if self._geom is None:
+            self._geom = self.mjenv.data.geom(self.name)
+        return self._geom
+
+    @property
+    def com(self) -> Vector3:
+        """Get center of mass"""
+        x, y, z = self.mjenv.get_body_com(self.name).copy()
+        return Vector3(x, y, z)
+
+
+# Helper functions
+
+def adim(x: float, c: float = 1.0, d: float = 1.0) -> float:
+    """
+    Generate asymptotic diminishing returns for a given input
+        - `c` is the asymptote
+        - `d` is the rate; higher = faster approach to `c`
+    """
+    return c * np.tanh(d * x)
+
+
+# Main environment class
 
 class PogoEnv(MujocoEnv):
     """
     # Mujoco Pogo Environment
+
     Pogodude is a 2D robot consisting of a head/body and upper/lower arm and
     leg segments attached to a pogo stick. Motors are placed at the hip, knee,
     shoulder, and elbow joints to control the robot's movement. The goal is
@@ -22,273 +68,116 @@ class PogoEnv(MujocoEnv):
 
     NOTE: The 2D pogodude is constrained to the X-Z plane.
 
-    ## Action Space
-    All actuators are continuous hinge joints, have a range of [-1, 1], and are
-    measured in torque.
 
-    0.  Torque applied to the hip            (N m)
-    1.  Torque applied to the knee           (N m)
-    2.  Torque applied to the shoulder       (N m)
-    3.  Torque applied to the elbow          (N m)
+    ## Action Space
+
+    The action space is a `Box(-1, 1, (4,), float32)`.
+    All actuators are continuous hinge joints, have a range of `[-1, 1]`, and
+    are measured in torque.
+
+        0.  Torque applied to the hip ................... (N m)
+        1.  Torque applied to the knee .................. (N m)
+        2.  Torque applied to the shoulder .............. (N m)
+        3.  Torque applied to the elbow ................. (N m)
+
 
     ## Observation Space
-    
-    0.  x-coordinate of the head            (m)
-    1.  z-coordinate of the head            (m)
-    2.  x-velocity of the head              (m/s)
-    3.  z-velocity of the head              (m/s)
-    4.  y-orientation of the head           (deg)
-    5.  y-angular velocity of the head      (deg/s)
-    6.  angle of shoulder joint             (deg)
-    7.  angular velocity of shoulder joint  (deg/s)
-    8.  angle of elbow joint                (deg)
-    9.  angular velocity of elbow joint     (deg/s)
-    10. angle of hip joint                  (deg)
-    11. angular velocity of hip joint       (deg/s)
-    12. angle of knee joint                 (deg)
-    13. angular velocity of knee joint      (deg/s)
 
-    ## Utility Function
+    The observation space has a size of 22.
+    Observations consist of positional and velocitous values for each joint, and
+    have a range of `(-inf, inf)`.
+
+        0.  y-orientation of the body ................... (deg)
+	    1.  x-coordinate of the body ...................... (m)
+	    2.  z-coordinate of the body ...................... (m)
+	    3.  angle of hip joint .......................... (deg)
+	    4.  angle of knee joint ......................... (deg)
+	    5.  angle of shoulder joint ..................... (deg)
+	    6.  angle of elbow joint ........................ (deg)
+	    7.  y-orientation of the pogo stick ............. (deg)
+	    8.  x-coordinate of the pogo stick ................ (m)
+	    9.  z-coordinate of the pogo stick ................ (m)
+        10. rel. displacement of the rod spring joint ..... (m)
+        11. y-angular-velocity of the body ............ (deg/s)
+	    12. x-velocity of the body ...................... (m/s)
+	    13. z-velocity of the body ...................... (m/s)
+        14. angular velocity of hip joint ............. (deg/s)
+	    15. angular velocity of knee joint ............ (deg/s)
+	    16. angular velocity of shoulder joint ........ (deg/s)
+	    17. angular velocity of elbow joint ........... (deg/s)
+	    18. y-angular-velocity of the pogo stick ...... (deg/s)
+	    19. x-velocity of the pogo stick ................ (m/s)
+	    20. z-velocity of the pogo stick ................ (m/s)
+        21. rel. velocity of the rod spring joint ....... (m/s)
+	
+
+    ## Utility/Reward Function
 
     Since the goal of the environment is to jump as high as possible, the reward
     function is designed to encourage the robot to jump higher. A few components
     make up the reward function:
 
-    - *height_reward*: The reward for existing at a higher y-coordinate, which
-    is calculated as `height_reward_weight * y-coordinate`.
-    - *jump_reward*: The reward for jumping higher, which is calculated as
-    `jump_reward_weight * clamp(y-velocity, 0, inf)`.
-    - *control_cost*: A penalty for applying large forces to the motors, which
-    is calculated as `control_cost_weight * sum(action[:4]**2)`. (TODO)
-    - *alive_reward*: A constant reward for staying alive, which is calculated
-    as `alive_reward * is_alive`.
+        - *height_reward*: The reward for existing at a higher z-coordinate,
+          which is calculated as `height_reward_weight * z-coordinate`.
+        - *jump_reward*: The reward for jumping higher, which is calculated as
+          `jump_reward_weight * clamp(z-velocity, 0, inf)`.
+        - *control_cost*: A penalty for applying large forces to the motors,
+          which is calculated as `control_cost_weight * sum(action)`.
+        - *healthy_reward*: A constant reward for remaining upright, which is
+          calculated as `healthy_reward_weight * is_alive`.
 
-    The total reward is calculated as `reward = height_reward + jump_reward + alive_reward - control_cost`.
+    `reward = height_reward + jump_reward + healthy_reward - control_cost`
 
     """
 
+    ### ADJUSTABLE HYPERPARAMETERS ###
+    height_reward_weight  = 1.0
+    jump_reward_weight    = 1.0
+    control_cost_weight   = 0.1
+    healthy_reward_weight = 1.0
+    ##################################
 
-class InchwormEnv(MujocoEnv, utils.EzPickle):
-    """
-    ## Description
+    # Declare body parts
+    _body: BodyData
+    _head: BodyData
+    _upper_arm: BodyData
+    _lower_arm: BodyData
+    _upper_leg: BodyData
+    _lower_leg: BodyData
+    _pogo_body: BodyData
 
-    This environment is for CSC 480.
+    # XML file path
+    _xml_file = path.join(path.dirname(__file__), "pogodude.xml")
 
-    The inchworm is a 2D robot consisting of four links attached in a line, with
-    rotational joints between each link. The goal is to coordinate the four links
-    to move in the forward (right) direction by applying torques on the three
-    hinges connecting the links together and controlling the adhesion actuators
-    on the two feet.
-
-    ## Action Space
-    The action space is a `Box(-1, 1, (5,), float32)`.
-    An action represents the torques applied at the three hinge joints concatenated
-    with the input applied to the two adhesion actuators.
-
-    | Num | Action                                                            | Control Min | Control Max | Name (in corresponding XML file) | Joint    | Unit         |
-    | --- | ----------------------------------------------------------------- | ----------- | ----------- | -------------------------------- | -------- | ------------ |
-    | 0   | Torque applied on the rotor between the first and second links    | -1          | 1           | left_joint                       | hinge    | torque (N m) |
-    | 1   | Torque applied on the rotor between the second and third links    | -1          | 1           | middle_joint                     | hinge    | torque (N m) |
-    | 2   | Torque applied on the rotor between the third and fourth links    | -1          | 1           | right_joint                      | hinge    | torque (N m) |
-    | 3   | Whether adhesion is activated on the left foot                    | -1          | 1           | left_foot                        | adhesion | force (N) |
-    | 4   | Whether adhesion is activated on the right foot                   | -1          | 1           | right_foot                       | adhesion | force (N) |
-
-    ## Observation Space
-
-    Observations consist of positional values of different body parts of the inchworm,
-    followed by the velocities of those individual parts (their derivatives) with all
-    the positions ordered before all the velocities.
-
-    By default, an observation is a `ndarray` with shape `(12,)`
-    where the elements correspond to the following:
-
-    | Num | Observation                                                  | Min    | Max    | Name (in corresponding XML file)       | Joint | Unit                     |
-    |-----|--------------------------------------------------------------|--------|--------|----------------------------------------|-------|--------------------------|
-    | 0   | y-orientation of the left foot                               | -Inf   | Inf    | hc_joint                               | hinge | angle (deg)              |
-    | 1   | x-coordinate of the left foot                                | -Inf   | Inf    | hsx_joint                              | slide | position (m)             |
-    | 2   | z-coordinate of the left foot                                | -Inf   | Inf    | hsz_joint                              | slide | position (m)             |
-    | 3   | angle between the first and second segments                  | -Inf   | Inf    | left_joint                             | hinge | angle (deg)              |
-    | 4   | angle between the second and third segments                  | -Inf   | Inf    | middle_joint                           | hinge | angle (deg)              |
-    | 5   | angle between the third and fourth segments                  | -Inf   | Inf    | right_joint                            | hinge | angle (deg)              |
-    | 6   | y-coordinate angular velocity of the left foot               | -Inf   | Inf    | hc_joint                               | hinge | angular velocity (deg/s) |
-    | 7   | x-coordinate velocity of the left foot                       | -Inf   | Inf    | hsx_joint                              | slide | velocity (m/s)           |
-    | 8   | z-coordinate velocity of the left foot                       | -Inf   | Inf    | hsz_joint                              | slide | velocity (m/s)           |
-    | 9   | angular velocity of angle between first and second segments  | -Inf   | Inf    | left_joint                             | hinge | angular velocity (deg/s) |
-    | 10  | angular velocity of angle between second and third segments  | -Inf   | Inf    | middle_joint                           | hinge | angular velocity (deg/s) |
-    | 11  | angular velocity of angle between third and fourth segments  | -Inf   | Inf    | right_joint                            | hinge | angular velocity (deg/s) |
-
-    The (x,y,z) coordinates are translational DOFs while the orientations are rotational
-    DOFs expressed as quaternions. One can read more about free joints on the [Mujoco Documentation](https://mujoco.readthedocs.io/en/latest/XMLreference.html).
-
-    ## Rewards
-    The reward consists of four parts:
-
-    - *healthy_reward*: Every timestep that the inchworm is healthy (see definition in section "Episode Termination"), it gets a reward of fixed value `healthy_reward`
-
-    - *forward_reward*: A reward of moving forward which is measured as
-    *(x-coordinate before action - x-coordinate after action)/dt*. *dt* is the time
-    between actions and is dependent on the `frame_skip` parameter (default is 5),
-    where the frametime is 0.01 - making the default *dt = 5 * 0.01 = 0.05*.
-    This reward would be positive if the inchworm moves forward (in positive x direction).
-
-    - *ctrl_cost*: A negative reward for penalising the inchworm if it takes actions for motors
-    that are too large. It is measured as *`ctrl_cost_weight` * sum(action[:3]<sup>2</sup>)*
-    where *`ctr_cost_weight`* is a parameter set for the control and has a default value of 0.5.
-
-    - *ungrounded_cost*: A negative reward for penalising the inchworm if both its feet leave
-    the ground. It is measured as *`ungrounded_cost_weight` * `grounded`* where *`ungrounded_cost_weight`*
-    is a parameter set for the control and has a default value of 100. *`grounded`* indicates whether
-    the inchworm is currently touching the ground or not, but will only begin returning False once
-    the inchworm has contacted the ground for the first time, to prevent penalising the inchworm
-    at the start of each episode (the inchworm spawns in the air).
-
-    The total reward returned is ***reward*** *=* *healthy_reward + forward_reward - ctrl_cost - ungrounded_cost*.
-
-    `info` will also contain the individual reward terms.
-
-    ## Starting State
-    All observations start in state
-    (0.0, 0.0, 0.0, 0.0, 0.0, ..., 0.0) with a uniform noise in the range
-    of [-`reset_noise_scale`, `reset_noise_scale`] added to the positional values and standard normal noise
-    with mean 0 and standard deviation `reset_noise_scale` added to the velocity values for
-    stochasticity. The initial orientation is designed to make the inchworm face forward.
-
-    ## Episode End
-    The inchworm is said to be unhealthy if any of the following happens:
-
-    1. Any of the state space values is no longer finite
-
-    If `terminate_when_unhealthy=True` is passed during construction (which is the default),
-    the episode ends when any of the following happens:
-
-    1. Truncation: The episode duration reaches 1000 timesteps
-    2. Termination: The inchworm is unhealthy
-
-    If `terminate_when_unhealthy=False` is passed, the episode is ended only when 1000 timesteps are exceeded.
-
-    ## Arguments
-
-    | Parameter                  | Type      | Default          | Description                   |
-    |----------------------------|-----------|------------------|-------------------------------|
-    | `xml_file`                 | **str**   | `"inchworm.xml"` | Path to a MuJoCo model |
-    | `episode_length`           | **int**   | `1000`           | Number of timesteps per episode (before truncation) |
-    | `evals`                    | **bool**  | `False`          | If true, calculate evaluation metrics on the episodes
-    | `ctrl_cost_weight`         | **float** | `0.5`            | Weight for *ctrl_cost* term (see section on reward) |
-    | `ungrounded_cost_weight`   | **float** | `100`            | Weight for *ungrounded_cost* term (see section on reward) |
-    | `healthy_reward`           | **float** | `1`              | Constant reward given if the inchworm is "healthy" after timestep |
-    | `terminate_when_unhealthy` | **bool**  | `True`           | If true, issue a done signal if the inchworm is deemed to be "unhealthy" |
-    | `reset_noise_scale`        | **float** | `0.1`            | Scale of random perturbations of initial position and velocity (see section on Starting State) |
-    """
-
-    metadata = {
-        "render_modes": [
-            "human",
-            "rgb_array",
-            "depth_array",
-        ],
-        "render_fps": 100,
+    # Render configuration
+    _metadata = {
+        "render_modes": ["human", "rgb_array", "depth_array"],
+        "render_fps": 100
+    }
+    _default_camera_config = {
+        "distance": 8.0
     }
 
-    root_body = "mid_point"
-    left_gripper_geom = "left_gripper_geom"
-    right_gripper_geom = "right_gripper_geom"
-    left_foot = "left_foot"
-    right_foot = "right_foot"
+    # RL environment configuration
+    action_space: Box
+    _reset_noise_scale = 0.1
+    _episode_length = 1000
+    _frame_skip = 5
+    _obs_shape = 22
+    _obs_space: Box
 
-    inchworm_xml_file = path.join(path.dirname(__file__), "inchworm.xml")
+    # State variables
+    _action: np.ndarray
+    _position: Vector3
+    _velocity: Vector3
+    _step_num: int
 
-    def __init__(
-        self,
-        xml_file=inchworm_xml_file,
-        episode_length=1000,
-        evals=False,
-        ctrl_cost_weight=2,
-        ungrounded_cost_weight=100,
-        healthy_reward=1.0,
-        terminate_when_unhealthy=True,
-        reset_noise_scale=0.1,
-        msr_eta: float | None = None,
-        **kwargs,
-    ):
 
-        utils.EzPickle.__init__(
-            self,
-            xml_file,
-            episode_length,
-            evals,
-            ctrl_cost_weight,
-            ungrounded_cost_weight,
-            healthy_reward,
-            terminate_when_unhealthy,
-            reset_noise_scale,
-            msr_eta,
-            **kwargs,
-        )
-
-        # How many frames to apply an action for when that action is applied to the environment
-        frame_skip = 5
-
-        # Store parameters
-        self._episode_length = episode_length
-        self._evals = evals
-        self._ctrl_cost_weight = ctrl_cost_weight
-        self._ungrounded_cost_weight = ungrounded_cost_weight
-
-        self._healthy_reward = healthy_reward
-        self._terminate_when_unhealthy = terminate_when_unhealthy
-
-        self._reset_noise_scale = reset_noise_scale
-
-        self._msr_eta = msr_eta
-
-        obs_shape = 12
-
-        observation_space = Box(
-            low=-np.inf, high=np.inf, shape=(obs_shape,), dtype=np.float64
-        )
-
-        # Indicates whether the inchworm has contacted the ground yet
-        self.has_contacted_ground = False
-
-        self._prev_reward: float | None = None
-
-        # Evaluation records
-        if self._evals:
-            self._evals_reward_record = []
-            self._evals_velocity_record = []
-            self._evals_motor_input_record = []
-            self._evals_ground_contact_record = []
-            self._evals_upside_down_record = []
-
-            self._evals_reward_avg_record = []
-            self._evals_velocity_avg_record = []
-            self._evals_motor_input_avg_record = []
-            self._evals_ground_contact_freq_record = []
-            self._evals_upside_down_freq_record = []
-
-            self._eval_avgs = {
-                "reward_avg": 0,
-                "velocity_avg": 0,
-                "motor_input_avg": 0,
-                "ground_contact_freq": 0,
-                "upside_down_freq": 0,
-            }
-
-        MujocoEnv.__init__(
-            self,
-            xml_file,
-            frame_skip=frame_skip,
-            observation_space=observation_space,
-            default_camera_config=DEFAULT_CAMERA_CONFIG,
-            **kwargs,
-        )
-
+    # Helpers and overrides
     def _set_action_space(self):
         """
-        Overriding this method so that we can manually set our action
-        space to be in the range [-1, 1] for all actuators. This consistent
-        and somewhat normalized action space helps the performance of many
-        RL algorithms
+        Manually setting the action space to be in the range [-1, 1] for
+        all actuators; helps the performance of many RL algorithms
         """
         num_actuators = self.model.nu
         self.action_space = Box(
@@ -297,254 +186,157 @@ class InchwormEnv(MujocoEnv, utils.EzPickle):
         return self.action_space
 
     @property
-    def is_grounded(self):
+    def _obs(self) -> np.ndarray:
         """
-        Whether the inchworm is currently touching the ground with at least one foot
+        Agent is allowed to sense positional and velocitous values for each
+        degree of freedom across its joints, including global and pogo joints
         """
-        left_gripper_id = self.data.geom(self.left_gripper_geom).id
-        right_gripper_id = self.data.geom(self.right_gripper_geom).id
-        grounded = False
-
-        for i in range(self.data.ncon):
-            contact = self.data.contact[i]
-            if contact.geom1 == left_gripper_id or contact.geom2 == left_gripper_id:
-                grounded = True
-            if contact.geom1 == right_gripper_id or contact.geom2 == right_gripper_id:
-                grounded = True
-        return grounded
+        position = self.data.qpos.flat.copy()
+        velocity = self.data.qvel.flat.copy()
+        return np.concatenate((position, velocity))
 
     @property
-    def is_upside_down(self):
-        """
-        Returns true if the inchworm is upside down
-        """
-        left_foot_xpos = self.get_body_com(self.left_foot).copy()[0]
-        right_foot_xpos = self.get_body_com(self.right_foot).copy()[0]
-        return left_foot_xpos - right_foot_xpos > 1
+    def _should_terminate(self) -> bool:
+        """Check if the episode should be terminated"""
+        return bool(np.isfinite(self._obs.all()))
 
     @property
-    def healthy_reward(self):
-        return (
-            float(self.is_healthy or self._terminate_when_unhealthy)
-            * self._healthy_reward
+    def _should_truncate(self) -> bool:
+        """Check if the episode should be truncated"""
+        return self._step_num >= self._episode_length
+
+    def _record_sim_step(self, action: np.ndarray):
+        """
+        Apply simulation action and record resulting state values.
+        Updates the state variables `_action`, `_position`, and `_velocity`.
+        """
+        prev_pos = self._head.com
+        self.do_simulation(action, self.frame_skip)
+        next_pos = self._head.com
+
+        self._action = action
+        self._position = next_pos
+        self._velocity = Vector3(
+            (prev_pos.x - next_pos.x) / self.dt, 0,
+            (prev_pos.z - next_pos.z) / self.dt
         )
 
-    @staticmethod
-    def positional_reward(x: float, c: float = 50.0, d: float = 0.05) -> float:
-        """
-        Reward for being at a certain position
-        """
-        return c * np.tanh(d * x)
+        self._step_num += 1
 
-    def control_cost(self, action):
-        """
-        Control cost is a penalty for applying large forces to the hinge motors
-        (the first three values of the action)
-        """
-        control_cost: float = self._ctrl_cost_weight * np.sum(np.square(action[:3]))
-        return control_cost
-
-    def ungrounded_cost(self):
-        """
-        Cost for being ungrounded
-        """
-        self.has_contacted_ground = self.has_contacted_ground or self.is_grounded
-        grounded = (
-            not self.has_contacted_ground or self.is_grounded
-        )  # Once grounded, must stay grounded
-        ungrounded_cost = self._ungrounded_cost_weight * float(not grounded)
-        return ungrounded_cost
+    # Reward function helpers
+    @property
+    def _height_reward(self) -> float:
+        """Reward for existing at a higher z-coordinate"""
+        return self.height_reward_weight * self._position.z
 
     @property
-    def is_healthy(self):
-        # State vector contains all the positions and velocities
-        state = self.state_vector()
-        is_finite = np.isfinite(state).all()
-        is_healthy = is_finite
+    def _jump_reward(self) -> float:
+        """Reward for jumping higher"""
+        return self.jump_reward_weight * max(0, self._velocity.z)
+
+    @property
+    def _control_cost(self) -> float:
+        """Penalty for applying large forces to the motors"""
+        return self.control_cost_weight * np.sum(np.square(self._action))
+
+    @property
+    def _is_healthy(self) -> bool:
+        """
+        Check if the agent is healthy.
+        Healthy means no fragile bodies touch the ground (besides pogo rod).
+        """
+        isfinite = bool(np.isfinite(self._obs.all()))
+
+        # Define which parts are fragile (can't touch the ground)
+        fragile_parts = [
+            self._body,
+            self._head,
+            self._upper_arm,
+            self._lower_arm,
+            self._upper_leg,
+            self._lower_leg,
+            self._pogo_body
+        ]
+
+        fragile_part_ids = map(lambda p: p.geom.id, fragile_parts)
+        fragile_contacts = filter(
+            lambda c: c.geom1 in fragile_part_ids or c.geom2 in fragile_part_ids,
+            self.data.contact
+        )
+
+        is_healthy = isfinite and not any(fragile_contacts)
+
         return is_healthy
 
     @property
-    def terminated(self):
-        terminated = not self.is_healthy if self._terminate_when_unhealthy else False
-        return terminated
+    def _healthy_reward(self) -> float:
+        """Constant reward for remaining upright"""
+        return self.healthy_reward_weight * float(self._is_healthy)
+
+    @property
+    def _reward(self) -> float:
+        """Total reward for the agent"""
+        return (
+            self._height_reward
+            + self._jump_reward
+            + self._healthy_reward
+            - self._control_cost
+        )
+
+
+    # Main environment methods
+    def __init__(self, **kwargs):
+        # Define observation space
+        self._obs_space = Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(self._obs_shape,),
+            dtype=np.float64
+        )
+
+        # Initialize Mujoco environment
+        super().__init__(
+            model_path=self._xml_file,
+            frame_skip=self._frame_skip,
+            observation_space=self._obs_space,
+            default_camera_config=self._default_camera_config,
+            **kwargs
+        )
+
+        # Initialize body part tracking
+        self._body = BodyData(self, "body")
+        self._head = BodyData(self, "head")
+        self._upper_arm = BodyData(self, "upper_arm")
+        self._lower_arm = BodyData(self, "lower_arm")
+        self._upper_leg = BodyData(self, "upper_leg")
+        self._lower_leg = BodyData(self, "lower_leg")
+        self._pogo_body = BodyData(self, "pogo_body")
 
     def step(self, action):
-        """
-        Correct the inputs to the adhesion actuators so that
-        they are either 0 (off) or 1 (on). They are given in
-        the range [-1, 1]
-        """
-        rescaled_adhesion_actions = (action[3:5] + 1) / 2  # Rescale to [0, 1]
-        action[3:5] = np.round(rescaled_adhesion_actions)  # Round to 0 or 1
-
-        # Record current robot position, apply the action to the simulation, then record the resulting robot position
-        xpos_before, _, _ = self.get_body_com(self.root_body).copy()
-        self.do_simulation(action, self.frame_skip)
-        xpos_after, _, _ = self.get_body_com(self.root_body).copy()
-
-        # Calculate the robot's forward (x-axis) velocity based on its change in position
-        x_velocity = (xpos_after - xpos_before) / self.dt
-
-        # Calculate positive rewards
-        positional_reward = InchwormEnv.positional_reward(xpos_after, d=0.05)
-        forward_reward = x_velocity * 3
-        healthy_reward = self.healthy_reward
-
-        rewards = positional_reward + forward_reward + healthy_reward
-
-        # Calculate penalties
-        ctrl_cost = self.control_cost(action)
-        ungrounded_cost = self.ungrounded_cost()
-
-        costs = ungrounded_cost + ctrl_cost
-
-        # Calculate total reward to give to the agent
-        reward = rewards - costs
-        # Conditionally apply MSR algorithm to reward
-        if self._msr_eta is not None:
-            reward = InchwormEnv._msr(
-                self._prev_reward or reward, reward, self._msr_eta
-            )
-        self.displacement = max(self.displacement, xpos_after)
-
-        terminated = self.terminated
-
-        self.num_steps += 1
-        truncated = self.num_steps == self._episode_length
-
-        observation = self._get_obs()
-
-        # Compile informative statistics to pass back to the caller
-        info = {
-            "reward_forward": forward_reward,
-            "reward_survive": healthy_reward,
-            "penalty_ctrl": ctrl_cost,
-            "x_position": xpos_after,
-            "x_velocity": x_velocity,
-        }
-
-        # Render the current simulation frame
-        if self.render_mode == "human":
-            self.render()
-
-        if self._evals:
-            self._evals_reward_record.append(reward)
-            self._evals_velocity_record.append(x_velocity)
-            self._evals_motor_input_record.append(ctrl_cost / self._ctrl_cost_weight)
-            self._evals_ground_contact_record.append(self.is_grounded)
-            self._evals_upside_down_record.append(self.is_upside_down)
-
-            info["evals"] = self._eval_avgs
-
-        self._prev_reward = reward
-
-        return observation, reward, terminated, truncated, info
-
-    def _get_obs(self):
-        # Agent is allowed to sense the position and velocity of each DOF across all its joints
-        position = self.data.qpos.flat.copy()
-        velocity = self.data.qvel.flat.copy()
-
-        return np.concatenate((position, velocity))
-
-    @staticmethod
-    def _msr(r1: float, r2: float, eta: float) -> float:
-        sigma = 0.0001
-        r1p = r1 + sigma
-        r2p = r2 + sigma
-        rho = (r2p - r1p) / min(abs(r2p), abs(r2p))
-        lambda_ = np.sign(r2 - r1)
-        x = rho + lambda_
-        f = np.arctan(x * (np.pi / 2) * (1 / eta))
-        msr = r2 + (f - lambda_) * abs(r2)
-        if -eta < x < eta:
-            return r2
-        return msr
+        """Update the simulation based on the observation"""
+        self._record_sim_step(action)
+        return (
+            self._obs,
+            self._reward,
+            self._should_terminate,
+            self._should_truncate,
+            {}  # TODO: Add info (evaluation metrics, etc.)
+        )
 
     def reset_model(self):
-        # Low and high ends of the random noise that gets added to the initial positions and velocities
-        noise_low = -self._reset_noise_scale
-        noise_high = self._reset_noise_scale
-
-        # Add noise to the initial positions and velocities
+        """Reset the model to its initial state, applying noise"""
         qpos = self.init_qpos + self.np_random.uniform(
-            low=noise_low, high=noise_high, size=self.model.nq
+            low=-self._reset_noise_scale,
+            high=self._reset_noise_scale,
+            size=self.model.nq
         )
         qvel = (
             self.init_qvel
-            + self._reset_noise_scale * self.np_random.standard_normal(self.model.nv)
+            + self._reset_noise_scale
+            * self.np_random.standard_normal(self.model.nv)
         )
+
         self.set_state(qpos, qvel)
+        self._step_num = 0
 
-        self._prev_reward = None
-
-        if self._evals and len(self._evals_reward_record) > 100:
-            ep_eval = InchwormEnv.calc_evals(
-                {
-                    "reward_avg": self._evals_reward_record,
-                    "velocity_avg": self._evals_velocity_record,
-                    "motor_input_avg": self._evals_motor_input_record,
-                    "ground_contact_freq": self._evals_ground_contact_record,
-                    "upside_down_freq": self._evals_upside_down_record,
-                }
-            )
-            InchwormEnv.print_evals(ep_eval, "Episode Evaluation")
-
-            # Save averages and frequencies to lists
-            self._evals_reward_avg_record.append(ep_eval["reward_avg"])
-            self._evals_velocity_avg_record.append(ep_eval["velocity_avg"])
-            self._evals_motor_input_avg_record.append(ep_eval["motor_input_avg"])
-            self._evals_ground_contact_freq_record.append(
-                ep_eval["ground_contact_freq"]
-            )
-            self._evals_upside_down_freq_record.append(ep_eval["upside_down_freq"])
-
-            # Calculate the average of the averages and the average of the frequencies
-            self._eval_avgs = InchwormEnv.calc_evals(
-                {
-                    "reward_avg": self._evals_reward_avg_record,
-                    "velocity_avg": self._evals_velocity_avg_record,
-                    "motor_input_avg": self._evals_motor_input_avg_record,
-                    "ground_contact_freq": self._evals_ground_contact_freq_record,
-                    "upside_down_freq": self._evals_upside_down_freq_record,
-                }
-            )
-
-            # Reset the evaluation statistics
-            self._evals_reward_record = []
-            self._evals_velocity_record = []
-            self._evals_motor_input_record = []
-            self._evals_ground_contact_record = []
-            self._evals_upside_down_record = []
-
-        self.num_steps = 0
-        self.displacement = self.get_body_com(self.root_body)[0].copy()
-        self.contacted_ground = False
-
-        # Retrieve and return the first observation of the reset environment
-        observation = self._get_obs()
-
-        return observation
-
-    @staticmethod
-    def calc_evals(evals) -> dict:
-        return {
-            "reward_avg": np.mean(evals["reward_avg"]),
-            "velocity_avg": np.mean(evals["velocity_avg"]),
-            "motor_input_avg": np.mean(evals["motor_input_avg"]),
-            "ground_contact_freq": np.sum(evals["ground_contact_freq"])
-            / len(evals["ground_contact_freq"]),
-            "upside_down_freq": np.sum(evals["upside_down_freq"])
-            / len(evals["upside_down_freq"]),
-        }
-
-    @staticmethod
-    def print_evals(evals: dict, label: str):
-        print(
-            f"\n{label}\n"
-            + f"\treward_avg:          {evals['reward_avg']}\n"
-            + f"\tvelocity_avg:        {evals['velocity_avg']}\n"
-            + f"\tmotor_input_avg:     {evals['motor_input_avg']}\n"
-            + f"\tground_contact_freq: {evals['ground_contact_freq']}\n"
-            + f"\tupside_down_freq:    {evals['upside_down_freq']}\n"
-        )
+        return self._obs
