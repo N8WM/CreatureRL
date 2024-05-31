@@ -11,8 +11,6 @@ from environments.utils import (
 )
 
 
-# Main environment class
-
 class PogoEnv(MujocoEnv):
     """
     # Mujoco Pogo Environment
