@@ -199,8 +199,6 @@ class PogoEnv(MujocoEnv):
         Check if the agent is healthy.
         Healthy means no fragile bodies touch the ground (besides pogo rod).
         """
-        isfinite = bool(np.isfinite(self._obs.all()))
-
         # Define which parts are fragile (can't touch the ground)
         fragile_parts = [
             self._body,
@@ -218,9 +216,7 @@ class PogoEnv(MujocoEnv):
             self.data.contact
         )
 
-        is_healthy = isfinite and not any(fragile_contacts)
-
-        return is_healthy
+        return not any(fragile_contacts)
 
     @property
     def _healthy_reward(self) -> float:
