@@ -6,12 +6,13 @@ import numpy as np
 from gymnasium.envs.mujoco.mujoco_env import MujocoEnv
 from gymnasium.spaces import Box
 
-
 # Helper classes
+
 
 @dataclass
 class Vector3:
     """3D float vector"""
+
     x: float
     y: float
     z: float
@@ -19,6 +20,7 @@ class Vector3:
 
 class BodyData:
     """Helper class to get body data from Mujoco environment"""
+
     mjenv: MujocoEnv
     name: str
     _geom = None
@@ -31,7 +33,7 @@ class BodyData:
     def geom(self):
         """Get cached geom data"""
         if self._geom is None:
-            self._geom = self.mjenv.data.geom(self.name)
+            self._geom = self.mjenv.data.geom(f"{self.name}_geom")
         return self._geom
 
     @property
@@ -42,6 +44,7 @@ class BodyData:
 
 
 # Helper functions
+
 
 def adim(x: float, c: float = 1.0, d: float = 1.0) -> float:
     """
