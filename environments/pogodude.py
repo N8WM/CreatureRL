@@ -152,7 +152,7 @@ class PogoEnv(MujocoEnv):
     @property
     def _should_terminate(self) -> bool:
         """Check if the episode should be terminated"""
-        return bool(np.isfinite(self._obs.all()))
+        return not bool(np.isfinite(self._obs).all())
 
     @property
     def _should_truncate(self) -> bool:

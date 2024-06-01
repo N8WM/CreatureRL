@@ -91,7 +91,8 @@ def run_simulation_with_sb3_agent(
     algorithm_class = {"td3": TD3, "sac": SAC}.get(algorithm.lower())
     assert algorithm_class is not None, f"Invalid algorithm: {algorithm}"
 
-    env = PogoEnv(render_mode="human", evals=evals)
+    env = PogoEnv(render_mode="human")
+    # env = PogoEnv(render_mode="human", evals=evals)
     check_env(
         env
     )  # Make sure our env is compatible with the interface that stable-baselines3 agents expect
@@ -297,7 +298,7 @@ if __name__ == "__main__":
             algorithm=args.algorithm,
             total_timesteps=args.total_timesteps,
             learning_rate=args.learning_rate,
-            render=True
+            #render=True
         )
     elif args.run:
         if args.model_name is None:
