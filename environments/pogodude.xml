@@ -88,7 +88,7 @@
 
       <body name="pogo_rod" pos="0 0 0">
         <geom name="pogo_rod_geom" type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0 1 0.5 1" />
-        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="50" />
+        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="75" />
       </body>
     </body>
 
