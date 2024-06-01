@@ -88,7 +88,7 @@ class PogoEnv(MujocoEnv):
     height_reward_weight  = 1.0
     jump_reward_weight    = 1.0
     control_cost_weight   = 0.1
-    healthy_reward_weight = 1.0
+    healthy_reward_weight = 5.0
     ##################################
 
     # Declare body parts
@@ -171,8 +171,8 @@ class PogoEnv(MujocoEnv):
         self._action = action
         self._position = next_pos
         self._velocity = Vector3(
-            (prev_pos.x - next_pos.x) / self.dt, 0,
-            (prev_pos.z - next_pos.z) / self.dt
+            (next_pos.x - prev_pos.x) / self.dt, 0,
+            (next_pos.z - prev_pos.z) / self.dt
         )
 
         self._step_num += 1
@@ -210,7 +210,7 @@ class PogoEnv(MujocoEnv):
             self._pogo_body
         ]
 
-        fragile_part_ids = map(lambda p: p.geom.id, fragile_parts)
+        fragile_part_ids = list(map(lambda p: p.geom.id, fragile_parts))
         fragile_contacts = filter(
             lambda c: c.geom1 in fragile_part_ids or c.geom2 in fragile_part_ids,
             self.data.contact
