@@ -104,7 +104,7 @@ class PogoEnv(MujocoEnv):
     _xml_file = path.join(path.dirname(__file__), "pogodude.xml")
 
     # Render configuration
-    _metadata = {
+    metadata = {
         "render_modes": ["human", "rgb_array", "depth_array"],
         "render_fps": 100
     }
