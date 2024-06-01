@@ -16,7 +16,6 @@ def train_with_sb3_agent(
     algorithm="td3",
     total_timesteps=30000,
     learning_rate=0.0003,
-    render=False,
 ):
     """
     Trains the provided saved agent (or initializes a new agent if the provided model name doesn't exist)
@@ -29,40 +28,50 @@ def train_with_sb3_agent(
     - `algorithm`: the algorithm to use for training. Must be one of "td3" or "sac"
     - `total_timesteps`: the number of time steps to train the agent for
     - `learning_rate`: the learning rate to apply to the training
-    - `render`: whether to render the simulation after the agent is done training
     """
     model_path = f"test_models/{model_name}.zip"
 
     algorithm_class = {"td3": TD3, "sac": SAC}.get(algorithm.lower())
     assert algorithm_class is not None, f"Invalid algorithm: {algorithm}"
 
-    env = PogoEnv(render_mode=("human" if render else "rgb_array"))
+    env = PogoEnv(render_mode=("rgb_array"))
     check_env(
         env
     )  # Make sure our env is compatible with the interface that stable-baselines3 agents expect
 
-    try:
-        model = algorithm_class.load(model_path, env)
-        print("Continuing training of saved model")
-    except FileNotFoundError:
-        print("No saved model found, training new model")
-        model = algorithm_class(
-            "MlpPolicy", env, verbose=1, learning_rate=learning_rate
-        )
+    max_retries = 10
+    retries = 0
+    finished = False
 
-    model.set_random_seed(time.time_ns() % 2**32)  # Set random seed to current time
+    while not finished and retries < max_retries:
 
-    try:
-        model.learn(total_timesteps, progress_bar=True)
-    except KeyboardInterrupt:
-        print("Interrupted by user, saving model")
-    finally:
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        model.save(model_path)
+        try:
+            model = algorithm_class.load(model_path, env)
+            print("Continuing training of saved model")
+        except FileNotFoundError:
+            print("No saved model found, training new model")
+            model = algorithm_class(
+                "MlpPolicy", env, verbose=1, learning_rate=learning_rate
+            )
 
-    if render:
-        input("Done. Press enter to view trained agent")
-        run_simulation_with_sb3_agent(model_name=model_name, model_dir="test_models")
+        model.set_random_seed(time.time_ns() % 2**32)  # Set random seed to current time
+
+        try:
+            model.learn(total_timesteps, progress_bar=True)
+            finished = True
+        except KeyboardInterrupt:
+            print("Interrupted by user, saving model")
+            finished = True
+        except Exception as e:
+            print(f"Error during training: {e}")
+            print("Reloading model and continuing training from timestep 0")
+            retries += 1
+        finally:
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            model.save(model_path)
+
+    if retries >= max_retries:
+        print("Too many retries, giving up")
     else:
         print("Done.")
 
@@ -116,8 +125,8 @@ def run_simulation_with_sb3_agent(
             obs, reward, done, info = vec_env.step(action)
             vec_env.render("human")
         except KeyboardInterrupt:
-            if evals:
-                PogoEnv.print_evals(info[0]["evals"], "Session Evaluation")
+            # if evals:
+            #     PogoEnv.print_evals(info[0]["evals"], "Session Evaluation")
             break
 
 

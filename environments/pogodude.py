@@ -159,16 +159,15 @@ class PogoEnv(MujocoEnv):
         """Check if the episode should be truncated"""
         return self._step_num >= self._episode_length
 
-    def _record_sim_step(self, action: np.ndarray):
+    def _record_sim_step(self):
         """
         Apply simulation action and record resulting state values.
-        Updates the state variables `_action`, `_position`, and `_velocity`.
+        Updates the state variables `_position`, `_velocity`, and `_step_num`.
         """
         prev_pos = self._head.com
-        self.do_simulation(action, self.frame_skip)
+        self.do_simulation(self._action, self.frame_skip)
         next_pos = self._head.com
 
-        self._action = action
         self._position = next_pos
         self._velocity = Vector3(
             (next_pos.x - prev_pos.x) / self.dt, 0,
@@ -264,11 +263,16 @@ class PogoEnv(MujocoEnv):
 
     def step(self, action):
         """Update the simulation based on the observation"""
-        self._record_sim_step(action)
+        self._action = action
+
+        terminated = self._should_terminate
+        if not terminated:
+            self._record_sim_step()
+
         return (
             self._obs,
             self._reward,
-            self._should_terminate,
+            terminated,
             self._should_truncate,
             {}  # TODO: Add info (evaluation metrics, etc.)
         )
