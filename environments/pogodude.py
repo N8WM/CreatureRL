@@ -87,7 +87,7 @@ class PogoEnv(MujocoEnv):
     ### ADJUSTABLE HYPERPARAMETERS ###
     height_reward_weight  = 1.0
     jump_reward_weight    = 1.0
-    control_cost_weight   = 0.1
+    control_cost_weight   = 0.0  # 0.1 for pogodude_1
     healthy_reward_weight = 5.0
     ##################################
 
@@ -99,9 +99,6 @@ class PogoEnv(MujocoEnv):
     _upper_leg: BodyData
     _lower_leg: BodyData
     _pogo_body: BodyData
-
-    # XML file path
-    _xml_file = path.join(path.dirname(__file__), "pogodude.xml")
 
     # Render configuration
     metadata = {
@@ -234,7 +231,10 @@ class PogoEnv(MujocoEnv):
 
 
     # Main environment methods
-    def __init__(self, **kwargs):
+    def __init__(self, xml_version: int, **kwargs):
+        # Determine XML file path
+        xml_fname = path.join(path.dirname(__file__), f"pogodude_{xml_version}.xml")
+
         # Define observation space
         self._obs_space = Box(
             low=-np.inf,
@@ -245,7 +245,7 @@ class PogoEnv(MujocoEnv):
 
         # Initialize Mujoco environment
         super().__init__(
-            model_path=self._xml_file,
+            model_path=xml_fname,
             frame_skip=self._frame_skip,
             observation_space=self._obs_space,
             default_camera_config=self._default_camera_config,

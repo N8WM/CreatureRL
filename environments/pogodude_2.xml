@@ -1,0 +1,113 @@
+<!-- UNCOMMENT FOR SCHEMA -->
+<!-- <?xml-model href="https://raw.githubusercontent.com/CommonWealthRobotics/mujoco-xml-schema-mjcf/main/mujoco.xsd"?> -->
+
+<mujoco model="pogodude">
+
+  <compiler angle="degree" inertiafromgeom="true" />
+  <option integrator="RK4" timestep="0.002" />
+
+  <!-- DEFAULT VALUES -->
+
+  <default>
+    <default class="connector_joint">
+      <joint type="hinge" armature="1" damping="1" limited="true" axis="0 1 0" />
+    </default>
+
+    <default class="pogo_joint">
+      <joint type="slide" armature="1" damping="1" limited="true" axis="0 0 1" />
+    </default>
+
+    <geom conaffinity="0" condim="3" friction="1 1 1" rgba="0.8 0.4 0.8 1" density="5.0" margin="0.01" size="0.05" />
+
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="4" />
+  </default>
+
+  <!-- VISUAL ASSETS -->
+
+  <asset>
+    <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100" />
+    <texture name="checker_tex" builtin="checker" type="2d" rgb1="0 0 0" rgb2="0.8 0.8 0.8" height="100" width="100" />
+    <material name="checker_mat" texture="checker_tex" texrepeat="1.5 1.5" texuniform="true" reflectance="0.5" shininess="1" specular="1" />
+  </asset>
+
+  <!-- PHYSICAL ENVIRONMENT -->
+
+  <worldbody>
+
+    <light cutoff="100" diffuse="1 1 1" dir="0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular="0.1 0.1 0.1" />
+    <geom type="plane" size="0 8 1" conaffinity="1" material="checker_mat" rgba="0.8 0.9 0.8 1" />
+
+    <!-- POGODUDE -->
+
+    <body name="body" pos="0 0 2.5">
+
+      <!-- GLOBAL JOINTS -->
+      <joint type="hinge" axis="0 1 0" />
+      <joint type="slide" axis="1 0 0" />
+      <joint type="slide" axis="0 0 1" />
+
+      <geom name="body_geom" type="capsule" fromto="0 0 0 0 0 1" rgba="1 0.2 0.2 1" />
+
+      <body name="head" pos="0 0 1.2">
+        <geom name="head_geom" type="sphere" pos="0 0 0" size="0.2" rgba="1 0.8 0.6 1" />
+        <camera name="track" mode="trackcom" pos="0 -10 -0" xyaxes="1 0 0 0 0 1"/>
+      </body>
+
+      <body name="upper_leg" pos="0 0 0">
+        <geom name="upper_leg_geom" type="capsule" fromto="0 0 0 0.6 0 0" rgba="0 0.4 0.8 1" />
+        <joint name="upper_leg_joint" type="hinge" axis="0 1 0" range="-75 90" />
+
+        <body name="lower_leg" pos="0.6 0 0">
+          <geom name="lower_leg_geom" type="capsule" fromto="0 0 0 0 0 -0.6" rgba="1 0.8 0.6 1" />
+          <joint name="lower_leg_joint" type="hinge" axis="0 1 0" range="-90 75" />
+        </body>
+      </body>
+
+      <body name="upper_arm" pos="0 0 0.75">
+        <geom name="upper_arm_geom" type="capsule" fromto="0 0 0 0.3 0 -0.3" rgba="1 0.2 0.2 1" />
+        <joint name="upper_arm_joint" type="hinge" axis="0 1 0" range="-90 10" />
+
+        <body name="lower_arm" pos="0.3 0 -0.3">
+          <geom name="lower_arm_geom" type="capsule" fromto="0 0 0 0.3 0 0.3" rgba="1 0.8 0.6 1" />
+          <joint name="lower_arm_joint" type="hinge" axis="0 1 0" range="-80 90" />
+        </body>
+      </body>
+
+    </body>
+
+    <!-- POGOSTICK -->
+
+    <body name="pogo_body" pos="0.6 0.1 1.9">
+
+      <!-- GLOBAL JOINTS -->
+      <joint type="hinge" axis="0 1 0" />
+      <joint type="slide" axis="1 0 0" />
+      <joint type="slide" axis="0 0 1" />
+
+      <geom name="pogo_body_geom" type="capsule" fromto="0 0 0 0 0 1.35" size="0.1" rgba="0 1 0.5 1" />
+
+      <body name="pogo_rod" pos="0 0 0">
+        <geom name="pogo_rod_geom" type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0 1 0.5 1" />
+        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="100" />
+      </body>
+    </body>
+
+  </worldbody>
+
+  <!-- POGOSTICK GRIP -->
+
+  <equality>
+    <connect name="feet" body1="lower_leg" body2="pogo_body" anchor="0 0 -0.6" />
+    <connect name="hands" body1="lower_arm" body2="pogo_body" anchor="0.3 0 0.3" />
+  </equality>
+
+  <!-- ACTUATORS -->
+
+  <actuator>
+    <motor name="hip" joint="upper_leg_joint" />
+    <motor name="knee" joint="lower_leg_joint" />
+    <motor name="shoulder" joint="upper_arm_joint" />
+    <motor name="elbow" joint="lower_arm_joint" />
+  </actuator>
+
+</mujoco>
