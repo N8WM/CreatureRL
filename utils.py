@@ -142,7 +142,25 @@ class TrainingCallback(BaseCallback):
                     print("No saved replay buffer; context has been reset")
 
         except FileNotFoundError:
-            if self.training_mode:
+            if from_checkpoint:
+                print("No model checkpoint found, attempting to load saved model")
+
+                try:
+                    model = SAC.load(self.model_path, env, device=device)
+                    print(f"Successfully loaded saved model onto {device}")
+
+                    if self.training_mode:
+                        try:
+                            model.load_replay_buffer(self.replay_buffer_path)
+                            print("Successfully loaded replay buffer; context has been preserved")
+
+                        except FileNotFoundError:
+                            print("No saved replay buffer; context has been reset")
+
+                except FileNotFoundError:
+                    raise FileNotFoundError("No saved model found either, aborting")
+                
+            elif self.training_mode:
                 print(f"No saved model found, training new model on {device}")
                 assert learning_rate is not None, "Must provide a learning rate when training a new model"
                 model = SAC(
@@ -158,3 +176,5 @@ class TrainingCallback(BaseCallback):
         model.set_random_seed(time.time_ns() % 2**32)
         
         return model
+
+    

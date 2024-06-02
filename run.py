@@ -1,4 +1,5 @@
 import sys
+import time
 import argparse
 
 from stable_baselines3.common.env_checker import check_env
@@ -23,9 +24,9 @@ def train_with_sb3_agent(
     - `total_timesteps`: int - the total number of timesteps to train the model for
     - `learning_rate`: float - the learning rate for training the model
     """
-
-    env = PogoEnv(version, render_mode=("rgb_array"))
-    check_env(env)
+    
+    retries = 0
+    max_retries = 10
 
     steptracker = IntRef()
     callback = TrainingCallback(
@@ -34,10 +35,11 @@ def train_with_sb3_agent(
         steptracker=steptracker,
     )
 
-    retries = 0
-    max_retries = 10
-
     while retries < max_retries:
+
+        env = PogoEnv(version, render_mode=("rgb_array"))
+        check_env(env)
+
         model = callback.load_model(env, learning_rate, retries > 0)
 
         try:
@@ -59,12 +61,15 @@ def train_with_sb3_agent(
             print(f"Error during training: {e}")
             print("Reloading model and continuing training")
             retries += 1
+            time.sleep(1)
+
+
+        finally:
+            env.close()
         
     if retries >= max_retries:
         print("Too many retries, giving up")
         callback.save_model(give_up=True)
-
-    env.close()
 
 
 def run_simulation_with_sb3_agent(
