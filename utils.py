@@ -12,7 +12,7 @@ BASE_MODEL_NAME = "pogodude"
 def get_device() -> str:
     if torch.cuda.is_available():
         return "cuda"
-    if torch.xpu.is_available():              # Not sure if this is faster than CPU
+    if hasattr(torch, "xpu") and torch.xpu.is_available():  # Not sure if this is faster than CPU
         return "xpu"
     # if torch.backends.mps.is_available():   # MPS kinda sucks for some reason
     #     return "mps"
@@ -87,15 +87,21 @@ class TrainingCallback(BaseCallback):
                 if os.path.exists(self.model_path):
                     os.remove(self.model_path)
                 os.rename(self.model_checkpoint_path, self.model_path)
+                print("Updated model with latest checkpoint")
+            else:
+                print("No model checkpoint found, model is unchanged")
             if rb_cp:
                 if os.path.exists(self.replay_buffer_path):
                     os.remove(self.replay_buffer_path)
                 os.rename(self.replay_buffer_checkpoint_path, self.replay_buffer_path)
-            return
+                print("Updated replay buffer with latest checkpoint")
+            else:
+                print("No replay buffer checkpoint found, replay buffer is unchanged")
 
-        self.model.save(self.model_path)
-        assert isinstance(self.model, SAC)
-        self.model.save_replay_buffer(self.replay_buffer_path)
+        else:
+            self.model.save(self.model_path)
+            assert isinstance(self.model, SAC)
+            self.model.save_replay_buffer(self.replay_buffer_path)
 
         # Clean up checkpoint files
         if os.path.exists(self.model_checkpoint_path):
@@ -112,15 +118,17 @@ class TrainingCallback(BaseCallback):
         Load the model and replay buffer from disk, or initialize
         a new model if no saved model is found and in training mode
         """
+        device = get_device()
+
         try:
             model = SAC.load(
                 self.model_checkpoint_path
                     if from_checkpoint
                     else self.model_path,
                 env,
-                device=get_device()
+                device=device
             )
-            print(f"Successfully loaded {'checkpoint' if from_checkpoint else 'saved model'}")
+            print(f"Successfully loaded {'checkpoint' if from_checkpoint else 'saved model'} onto {device}")
 
             if self.training_mode:
                 try:
@@ -135,7 +143,7 @@ class TrainingCallback(BaseCallback):
 
         except FileNotFoundError:
             if self.training_mode:
-                print("No saved model found, training new model")
+                print(f"No saved model found, training new model on {device}")
                 assert learning_rate is not None, "Must provide a learning rate when training a new model"
                 model = SAC(
                     "MlpPolicy",
