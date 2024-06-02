@@ -12,7 +12,9 @@ BASE_MODEL_NAME = "pogodude"
 def get_device() -> str:
     if torch.cuda.is_available():
         return "cuda"
-    # if torch.backends.mps.is_available():   # MPS kinda sucks
+    if torch.xpu.is_available():              # Not sure if this is faster than CPU
+        return "xpu"
+    # if torch.backends.mps.is_available():   # MPS kinda sucks for some reason
     #     return "mps"
     return "cpu"
 
@@ -72,9 +74,25 @@ class TrainingCallback(BaseCallback):
         if self.steptracker is not None:
             self.steptracker(self.num_timesteps)
 
-    def save_model(self):
+    def save_model(self, give_up=False):
         """Save the model and replay buffer to disk"""
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+
+        model_cp: bool = os.path.exists(self.model_checkpoint_path)
+        rb_cp: bool = os.path.exists(self.replay_buffer_checkpoint_path)
+
+        if give_up:
+            # rename checkpoints to saved model
+            if model_cp:
+                if os.path.exists(self.model_path):
+                    os.remove(self.model_path)
+                os.rename(self.model_checkpoint_path, self.model_path)
+            if rb_cp:
+                if os.path.exists(self.replay_buffer_path):
+                    os.remove(self.replay_buffer_path)
+                os.rename(self.replay_buffer_checkpoint_path, self.replay_buffer_path)
+            return
+
         self.model.save(self.model_path)
         assert isinstance(self.model, SAC)
         self.model.save_replay_buffer(self.replay_buffer_path)

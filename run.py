@@ -62,6 +62,7 @@ def train_with_sb3_agent(
         
     if retries >= max_retries:
         print("Too many retries, giving up")
+        callback.save_model(give_up=True)
 
     env.close()
 
