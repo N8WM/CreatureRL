@@ -1,11 +1,12 @@
-# InchwormRL
+# CreatureRL
 
 By Nathan McCutchen
-_Forked from [gwholland3/InchwormRL](https://github.com/gwholland3/InchwormRL) by Schuyler Fenton, Grant Holland, Nathan McCutchen, and Ishan Meher_
+_Forked from [gwholland3/InchwormRL](https://github.com/gwholland3/InchwormRL) by Jake Alt, Erik Luu, Nathan McCutchen, and Bharath Senthilkumar_
 
-This project is rebooted for CSC 580 at Cal Poly, taught by Dr. Franz Kurfess
 
-<img src="./assets/inchworm.gif" alt="Inchworm" style="width: 90%;">
+This project took inspiration from a previous project and was rebooted for CSC 570 at Cal Poly, taught by Dr. Mugizi Robert Rwebangira
+
+<!-- <img src="./assets/inchworm.gif" alt="Inchworm" style="width: 90%;"> -->
 
 ## External Resources
 
