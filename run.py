@@ -1,13 +1,10 @@
-import argparse
-import os
 import sys
-import time
+import argparse
 
-from stable_baselines3 import SAC
 from stable_baselines3.common.env_checker import check_env
 
 from environments.pogodude import PogoEnv
-from utils import BASE_MODEL_NAME, MODEL_DIRS, IntRef, TrainingCallback
+from utils import BASE_MODEL_NAME, IntRef, TrainingCallback
 
 
 def train_with_sb3_agent(

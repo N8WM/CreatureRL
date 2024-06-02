@@ -144,7 +144,7 @@ class PogoEnv(MujocoEnv):
         """
         position = self.data.qpos.flat.copy()
         velocity = self.data.qvel.flat.copy()
-        return np.concatenate((position, velocity))
+        return np.concatenate((position, velocity)).astype(np.float32)
 
     @property
     def _should_terminate(self) -> bool:
@@ -240,7 +240,7 @@ class PogoEnv(MujocoEnv):
             low=-np.inf,
             high=np.inf,
             shape=(self._obs_shape,),
-            dtype=np.float64
+            dtype=np.float32
         )
 
         # Initialize Mujoco environment
@@ -283,12 +283,12 @@ class PogoEnv(MujocoEnv):
             low=-self._reset_noise_scale,
             high=self._reset_noise_scale,
             size=self.model.nq
-        )
+        ).astype(np.float32)
         qvel = (
             self.init_qvel
             + self._reset_noise_scale
             * self.np_random.standard_normal(self.model.nv)
-        )
+        ).astype(np.float32)
 
         self.set_state(qpos, qvel)
         self._step_num = 0

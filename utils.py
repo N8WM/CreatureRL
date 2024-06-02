@@ -1,5 +1,6 @@
 import os
 import time
+import torch
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
@@ -7,6 +8,13 @@ from stable_baselines3.common.type_aliases import GymEnv
 
 MODEL_DIRS = {"test": "test_models", "save": "saved_models"}
 BASE_MODEL_NAME = "pogodude"
+
+def get_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    # if torch.backends.mps.is_available():   # MPS kinda sucks
+    #     return "mps"
+    return "cpu"
 
 class IntRef:
     def __init__(self):
@@ -91,7 +99,8 @@ class TrainingCallback(BaseCallback):
                 self.model_checkpoint_path
                     if from_checkpoint
                     else self.model_path,
-                env
+                env,
+                device=get_device()
             )
             print(f"Successfully loaded {'checkpoint' if from_checkpoint else 'saved model'}")
 
@@ -110,7 +119,13 @@ class TrainingCallback(BaseCallback):
             if self.training_mode:
                 print("No saved model found, training new model")
                 assert learning_rate is not None, "Must provide a learning rate when training a new model"
-                model = SAC("MlpPolicy", env, verbose=1, learning_rate=learning_rate)
+                model = SAC(
+                    "MlpPolicy",
+                    env,
+                    verbose=1,
+                    learning_rate=learning_rate,
+                    device=get_device()
+                )
             else:
                 raise FileNotFoundError("No saved model found")
 
