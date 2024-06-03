@@ -9,9 +9,9 @@ This project took inspiration from a previous project and was rebooted for CSC 5
 
 We used the following external resources in our project.
 
-MuJoCo physics engine: https://mujoco.readthedocs.io/en/stable/overview.html
-Gymnasium RL framework: https://gymnasium.farama.org/
-Stable Baselines3 RL algorithms: https://stable-baselines3.readthedocs.io/en/master/index.html
+MuJoCo physics engine: https://mujoco.readthedocs.io/en/stable/overview.html  
+Gymnasium RL framework: https://gymnasium.farama.org/  
+Stable Baselines3 RL algorithms: https://stable-baselines3.readthedocs.io/en/master/index.html  
 
 ### Important Notice
 
