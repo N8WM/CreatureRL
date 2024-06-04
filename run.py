@@ -124,7 +124,7 @@ def run_simulation_with_sb3_agent(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="""Run or train an agent to control an pogo robot"""
+        description="""Run or train an agent to control a pogo robot"""
     )
     group1 = parser.add_argument_group("Functional arguments (mutually exclusive)")
     group1e = group1.add_mutually_exclusive_group(required=True)
