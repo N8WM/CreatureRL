@@ -6,6 +6,17 @@
   <compiler angle="degree" inertiafromgeom="true" />
   <option integrator="RK4" timestep="0.002" />
 
+  <!-- HYPERPARAMETERS -->
+  <custom>
+    <numeric name="height_reward_weight" data="3" />
+    <numeric name="hrw_exp" data="2" />
+    <numeric name="jump_reward_weight" data="1" />
+    <numeric name="jrw_exp" data="2" />
+    <numeric name="control_cost_weight" data="0.1" />
+    <numeric name="ccw_exp" data="1" />
+    <numeric name="healthy_reward_weight" data="5" />
+  </custom>
+
   <!-- DEFAULT VALUES -->
 
   <default>
@@ -19,7 +30,7 @@
 
     <geom conaffinity="0" condim="3" friction="1 1 1" rgba="0.8 0.4 0.8 1" density="5.0" margin="0.01" size="0.05" />
 
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="4" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="2" />
   </default>
 
   <!-- VISUAL ASSETS -->
@@ -88,7 +99,7 @@
 
       <body name="pogo_rod" pos="0 0 0">
         <geom name="pogo_rod_geom" type="capsule" fromto="0 0 0 0 0 -0.8" size="0.075" rgba="0 1 0.5 1" />
-        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="100" />
+        <joint name="rod_spring" type="slide" axis="0 0 1" range="0 0.7" stiffness="75" />
       </body>
     </body>
 

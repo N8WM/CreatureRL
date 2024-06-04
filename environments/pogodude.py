@@ -84,12 +84,14 @@ class PogoEnv(MujocoEnv):
 
     """
 
-    ### ADJUSTABLE HYPERPARAMETERS ###
-    height_reward_weight  = 1.0
-    jump_reward_weight    = 1.0
-    control_cost_weight   = 0.0  # 0.1 for pogodude_1
-    healthy_reward_weight = 5.0
-    ##################################
+    #Declare hyperparameters
+    height_reward_weight: float
+    jump_reward_weight: float
+    control_cost_weight: float
+    healthy_reward_weight: float
+    hrw_exp: float
+    jrw_exp: float
+    ccw_exp: float
 
     # Declare body parts
     _body: BodyData
@@ -125,6 +127,14 @@ class PogoEnv(MujocoEnv):
 
 
     # Helpers and overrides
+
+    def _get_custom_param(self, name: str, default: float | int) -> float | int:
+        """Helper method to get cusom parameters from the MuJoCo model"""
+        try:
+            return self.model.numeric(name).data[0]
+        except ValueError:
+            return default
+
     def _set_action_space(self):
         """
         Manually setting the action space to be in the range [-1, 1] for
@@ -177,17 +187,17 @@ class PogoEnv(MujocoEnv):
     @property
     def _height_reward(self) -> float:
         """Reward for existing at a higher z-coordinate"""
-        return self.height_reward_weight * self._position.z
+        return (self.height_reward_weight * self._position.z) ** self.hrw_exp
 
     @property
     def _jump_reward(self) -> float:
         """Reward for jumping higher"""
-        return self.jump_reward_weight * max(0, self._velocity.z)
+        return (self.jump_reward_weight * max(0, self._velocity.z)) ** self.jrw_exp
 
     @property
     def _control_cost(self) -> float:
         """Penalty for applying large forces to the motors"""
-        return self.control_cost_weight * np.sum(np.square(self._action))
+        return (self.control_cost_weight * np.sum(np.square(self._action))) ** self.ccw_exp
 
     @property
     def _is_healthy(self) -> bool:
@@ -231,9 +241,10 @@ class PogoEnv(MujocoEnv):
 
 
     # Main environment methods
-    def __init__(self, xml_version: int, **kwargs):
+    def __init__(self, xml_version: str, **kwargs):
         # Determine XML file path
-        xml_fname = path.join(path.dirname(__file__), f"pogodude_{xml_version}.xml")
+        major_version = xml_version.split(".")[0]
+        xml_fname = path.join(path.dirname(__file__), f"pogodude_{major_version}.xml")
 
         # Define observation space
         self._obs_space = Box(
@@ -261,6 +272,14 @@ class PogoEnv(MujocoEnv):
         self._lower_leg = BodyData(self, "lower_leg")
         self._pogo_body = BodyData(self, "pogo_body")
 
+        self.height_reward_weight  = self._get_custom_param("height_reward_weight",  1.0)
+        self.jump_reward_weight    = self._get_custom_param("jump_reward_weight",    1.0)
+        self.control_cost_weight   = self._get_custom_param("control_cost_weight",   0.1)
+        self.healthy_reward_weight = self._get_custom_param("healthy_reward_weight", 1.0)
+        self.hrw_exp = self._get_custom_param("hrw_exp", 1)
+        self.jrw_exp = self._get_custom_param("jrw_exp", 1)
+        self.ccw_exp = self._get_custom_param("ccw_exp", 1)
+
     def step(self, action):
         """Update the simulation based on the observation"""
         self._action = action
@@ -274,7 +293,7 @@ class PogoEnv(MujocoEnv):
             self._reward,
             terminated,
             self._should_truncate,
-            {}  # TODO: Add info (evaluation metrics, etc.)
+            {"height": self._position.z}
         )
 
     def reset_model(self):

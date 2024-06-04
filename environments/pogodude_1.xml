@@ -6,6 +6,17 @@
   <compiler angle="degree" inertiafromgeom="true" />
   <option integrator="RK4" timestep="0.002" />
 
+  <!-- HYPERPARAMETERS -->
+  <custom>
+    <numeric name="height_reward_weight" data="3" />
+    <numeric name="hrw_exp" data="1" />
+    <numeric name="jump_reward_weight" data="1" />
+    <numeric name="jrw_exp" data="1" />
+    <numeric name="control_cost_weight" data="0.1" />
+    <numeric name="ccw_exp" data="1" />
+    <numeric name="healthy_reward_weight" data="5" />
+  </custom>
+
   <!-- DEFAULT VALUES -->
 
   <default>

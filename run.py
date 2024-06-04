@@ -9,7 +9,7 @@ from utils import BASE_MODEL_NAME, IntRef, TrainingCallback
 
 
 def train_with_sb3_agent(
-    version: int,
+    version: str,
     total_timesteps: int,
     learning_rate: float,
 ):
@@ -20,7 +20,7 @@ def train_with_sb3_agent(
 
     Parameters
     ----------
-    - `version`: int - the version of the environment and model to train
+    - `version`: str - the version of the environment and model to train
     - `total_timesteps`: int - the total number of timesteps to train the model for
     - `learning_rate`: float - the learning rate for training the model
     """
@@ -73,7 +73,7 @@ def train_with_sb3_agent(
 
 
 def run_simulation_with_sb3_agent(
-    version: int,
+    version: str,
     model_dir: str,
 ):
     """
@@ -82,7 +82,7 @@ def run_simulation_with_sb3_agent(
 
     Parameters
     ----------
-    `version`: int - the version of the environment and model to run
+    `version`: str - the version of the environment and model to run
     `model_dir`: str - the directory where the saved model is located
     """
 
@@ -108,13 +108,18 @@ def run_simulation_with_sb3_agent(
     assert vec_env is not None
     obs = vec_env.reset()
 
+    best_height = 0
     while True:
         try:
             action, _ = model.predict(obs, deterministic=True)
-            obs, _, _, _ = vec_env.step(action)
+            obs, _, _, info = vec_env.step(action)
             vec_env.render("human")
+            if info[0]["height"] > best_height:
+                best_height = info[0]["height"]
         except KeyboardInterrupt:
             break
+
+    print(f"\n\nBest height reached: {best_height:.2f}")
 
 
 if __name__ == "__main__":
@@ -139,8 +144,8 @@ if __name__ == "__main__":
     group2.add_argument(
         "-v",
         "--version",
-        type=int,
-        help="version of the model to run (e.g. '1' or '2')",
+        type=str,
+        help="version of the model to run (e.g. '1' or '1.2')",
     )
     group3 = parser.add_argument_group("Running arguments")
     group3.add_argument(
