@@ -45,13 +45,13 @@ We recommend doing this in a fresh Python virtual environment. Cd into the repo 
 
 `pip install -r requirements.txt`
 
-## Interacting With the Project
+## Quick Start
 
 **Working Model**
 
-As of 6/2/24, there is one successful model trained with the SAC algorithm in the `saved_models` directory. You can run this model with the following command:
+As of 6/2/24, there are three successful models trained with the SAC algorithm in the `saved_models` directory: `pogodude_1`, `pogodude_2`, and `pogodude_2.1`. To run the most recent model, run the following command:
 
-`python3 run.py -rsv 1`
+`python3 run.py -rsv 2.1`
 
 **Other Options**
 
@@ -81,7 +81,7 @@ Functional arguments (mutually exclusive):
 
 Training and running arguments:
   -v VERSION, --version VERSION
-                        version of the model to run (e.g. '1' or '2')
+                        version of the model to run (e.g. '1', '2', '2.1')
 
 Running arguments:
   -s, --saved-dir       whether the model will be/is in the saved_models/ directory (otherwise test_models/)

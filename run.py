@@ -145,7 +145,7 @@ if __name__ == "__main__":
         "-v",
         "--version",
         type=str,
-        help="version of the model to run (e.g. '1' or '1.2')",
+        help="version of the model to run (e.g. '1', '2', '2.1')",
     )
     group3 = parser.add_argument_group("Running arguments")
     group3.add_argument(
